@@ -1,5 +1,5 @@
 import React from 'react';
-import AdminDashboardClient from '@/app/admin-dashboard/components/AdminDashboardClient';
+import AdminDashboardClient from './components/AdminDashboardClient';
 
 export default function AdminDashboardPage() {
   return <AdminDashboardClient />;

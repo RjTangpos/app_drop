@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import AppImage from '@/components/ui/AppImage';
+import AppImage from '../../components/ui/AppImage';
 
 const stats = [
 { label: 'Downloads', value: '24K+' },

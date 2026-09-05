@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import AppLogo from '@/components/ui/AppLogo';
+import AppLogo from '../components/ui/AppLogo';
 
 export default function Footer() {
   return (

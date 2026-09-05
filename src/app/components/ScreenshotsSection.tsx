@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
-import AppImage from '@/components/ui/AppImage';
+import AppImage from '../../components/ui/AppImage';
 
 const screenshots = [
 {
