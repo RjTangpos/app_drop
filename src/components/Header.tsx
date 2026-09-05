@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import AppLogo from '../components/ui/AppLogo';
 
@@ -14,19 +14,61 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // ✅ Handle scroll state with proper cleanup
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close menu on scroll
+  // ✅ Handle menu close on scroll - separate from menuOpen state
   useEffect(() => {
     if (!menuOpen) return;
-    const close = () => setMenuOpen(false);
-    window.addEventListener('scroll', close, { passive: true });
-    return () => window.removeEventListener('scroll', close);
+
+    const closeMenu = () => setMenuOpen(false);
+    window.addEventListener('scroll', closeMenu, { passive: true });
+    return () => window.removeEventListener('scroll', closeMenu);
+  }, [menuOpen]); // ✅ menuOpen in deps is fine here - cleanup handles it
+
+  // ✅ Handle escape key to close menu
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
   }, [menuOpen]);
+
+  // ✅ Prevent body scroll when menu is open
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [menuOpen]);
+
+  // ✅ Memoize toggle function
+  const toggleMenu = useCallback(() => {
+    setMenuOpen(prev => !prev);
+  }, []);
+
+  // ✅ Memoize close function
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false);
+  }, []);
 
   return (
     <>
@@ -36,10 +78,11 @@ export default function Header() {
             ? 'bg-background/90 backdrop-blur-xl border-b border-border shadow-sm'
             : 'bg-transparent'
         }`}
+        role="banner"
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
+          <Link href="/" className="flex items-center gap-2 group" aria-label="AppDrop home">
             <AppLogo size={36} />
             <span className="font-bold text-lg tracking-tight text-foreground hidden sm:block">
               AppDrop
@@ -47,7 +90,7 @@ export default function Header() {
           </Link>
 
           {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-1 px-5 py-2 bg-card/70 backdrop-blur-sm border border-border rounded-full shadow-sm">
+          <nav className="hidden md:flex items-center gap-1 px-5 py-2 bg-card/70 backdrop-blur-sm border border-border rounded-full shadow-sm" aria-label="Main navigation">
             {navLinks?.map((link) => (
               <a
                 key={link?.label}
@@ -70,18 +113,24 @@ export default function Header() {
             <Link
               href="/admin-login"
               className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Admin login"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/>
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                <polyline points="10 17 15 12 10 7"/>
+                <line x1="15" x2="3" y1="12" y2="12"/>
               </svg>
               Admin
             </Link>
             <a
               href="#download"
               className="btn-download px-5 py-2 text-primary-foreground text-sm font-semibold rounded-full flex items-center gap-2"
+              aria-label="Download AppDrop APK"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" x2="12" y1="15" y2="3"/>
               </svg>
               Download
             </a>
@@ -89,8 +138,10 @@ export default function Header() {
             {/* Hamburger */}
             <button
               className="md:hidden flex flex-col justify-center items-center w-10 h-10 gap-1.5"
-              onClick={() => setMenuOpen(!menuOpen)}
-              aria-label="Toggle menu"
+              onClick={toggleMenu}
+              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={menuOpen}
+              aria-controls="mobile-menu"
             >
               <span className={`block h-0.5 w-5 bg-foreground rounded transition-all duration-300 ${menuOpen ? 'rotate-45 translate-y-2' : ''}`} />
               <span className={`block h-0.5 w-5 bg-foreground rounded transition-all duration-300 ${menuOpen ? 'opacity-0' : ''}`} />
@@ -101,12 +152,18 @@ export default function Header() {
       </header>
       {/* Mobile Menu Overlay */}
       {menuOpen && (
-        <div className="fixed inset-0 z-40 bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center gap-8">
+        <div
+          id="mobile-menu"
+          className="fixed inset-0 z-40 bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center gap-8"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Mobile navigation menu"
+        >
           {navLinks?.map((link) => (
             <a
               key={link?.label}
               href={link?.href}
-              onClick={() => setMenuOpen(false)}
+              onClick={closeMenu}
               className="text-2xl font-semibold text-foreground hover:text-primary transition-colors"
             >
               {link?.label}
@@ -114,21 +171,21 @@ export default function Header() {
           ))}
           <Link
             href="/versions"
-            onClick={() => setMenuOpen(false)}
+            onClick={closeMenu}
             className="text-2xl font-semibold text-foreground hover:text-primary transition-colors"
           >
             Versions
           </Link>
           <Link
             href="/admin-login"
-            onClick={() => setMenuOpen(false)}
+            onClick={closeMenu}
             className="text-base text-muted-foreground hover:text-foreground transition-colors"
           >
             Admin Login
           </Link>
           <a
             href="#download"
-            onClick={() => setMenuOpen(false)}
+            onClick={closeMenu}
             className="btn-download px-8 py-3 text-primary-foreground font-semibold rounded-full"
           >
             Download App

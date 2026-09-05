@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import AppLogo from '../../../components/ui/AppLogo';
 import Link from 'next/link';
 
-// Mock admin credentials (static — no real backend)
-const MOCK_EMAIL = 'admin@appdrop.io';
-const MOCK_PASSWORD = 'AppDrop2026!';
+// Move to environment variables in production
+const MOCK_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@appdrop.io';
+const MOCK_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'AppDrop2026!';
 
 export default function AdminLoginClient() {
   const router = useRouter();
@@ -22,15 +22,31 @@ export default function AdminLoginClient() {
     setError('');
     setLoading(true);
 
-    // Simulate network delay
-    await new Promise((r) => setTimeout(r, 900));
+    try {
+      // Simulate network delay
+      await new Promise((resolve, reject) => {
+        // Simulate random network failure for testing
+        const shouldFail = Math.random() < 0.05;
+        setTimeout(() => {
+          if (shouldFail) {
+            reject(new Error('Network error: Unable to connect to authentication service.'));
+          } else {
+            resolve(true);
+          }
+        }, 900);
+      });
 
-    if (email === MOCK_EMAIL && password === MOCK_PASSWORD) {
-      // Mock auth — store in sessionStorage (no real backend)
-      sessionStorage.setItem('appdrop_admin', 'authenticated');
-      router.push('/admin-dashboard');
-    } else {
-      setError('Invalid email or password. Please try again.');
+      if (email === MOCK_EMAIL && password === MOCK_PASSWORD) {
+        // Mock auth — store in sessionStorage (no real backend)
+        sessionStorage.setItem('appdrop_admin', 'authenticated');
+        router.push('/admin-dashboard');
+      } else {
+        setError('Invalid email or password. Please try again.');
+        setLoading(false);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.';
+      setError(errorMessage);
       setLoading(false);
     }
   };
@@ -49,6 +65,7 @@ export default function AdminLoginClient() {
       <Link
         href="/"
         className="absolute top-6 left-6 flex items-center gap-2 text-xs font-medium text-white/50 hover:text-white/80 transition-colors"
+        aria-label="Return to main site"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="m15 18-6-6 6-6"/>
@@ -76,17 +93,34 @@ export default function AdminLoginClient() {
             Sign in to manage your app distribution.
           </p>
 
+          {/* Error Alert */}
+          {error && (
+            <div
+              className="mb-6 flex items-center gap-2 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl animate-fade-up"
+              role="alert"
+              aria-live="assertive"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-400 flex-shrink-0">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <p className="text-xs text-red-400">{error}</p>
+            </div>
+          )}
+
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-widest text-white/50 mb-2">
                 Email Address
               </label>
               <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" aria-hidden="true">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                    <rect width="20" height="16" x="2" y="4" rx="2"/>
+                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
                   </svg>
                 </div>
                 <input
@@ -96,6 +130,8 @@ export default function AdminLoginClient() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@appdrop.io"
                   required
+                  aria-required="true"
+                  autoComplete="email"
                   className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-primary/60 focus:bg-white/8 transition-all"
                 />
               </div>
@@ -107,9 +143,10 @@ export default function AdminLoginClient() {
                 Password
               </label>
               <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" aria-hidden="true">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                   </svg>
                 </div>
                 <input
@@ -119,42 +156,37 @@ export default function AdminLoginClient() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
+                  aria-required="true"
+                  autoComplete="current-password"
                   className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-12 py-3.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-primary/60 focus:bg-white/8 transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
-                  aria-label="Toggle password visibility"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" x2="23" y1="1" y2="23"/>
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                      <line x1="1" x2="23" y1="1" y2="23"/>
                     </svg>
                   ) : (
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
                     </svg>
                   )}
                 </button>
               </div>
             </div>
 
-            {/* Error */}
-            {error && (
-              <div className="flex items-center gap-2 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-400 flex-shrink-0">
-                  <circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>
-                </svg>
-                <p className="text-xs text-red-400">{error}</p>
-              </div>
-            )}
-
             {/* Submit */}
             <button
               type="submit"
               disabled={loading}
               className="btn-download w-full py-4 text-primary-foreground text-sm font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              aria-label={loading ? 'Signing in...' : 'Sign in to admin panel'}
             >
               {loading ? (
                 <>
@@ -167,7 +199,8 @@ export default function AdminLoginClient() {
                 <>
                   Sign In
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+                    <path d="M5 12h14"/>
+                    <path d="m12 5 7 7-7 7"/>
                   </svg>
                 </>
               )}

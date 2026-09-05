@@ -22,6 +22,9 @@ interface AppImageProps {
     [key: string]: any;
 }
 
+// ✅ Move default fallback to constant outside component
+const DEFAULT_FALLBACK = '/assets/images/no_image.png';
+
 const AppImage = memo(function AppImage({
     src,
     alt,
@@ -35,7 +38,7 @@ const AppImage = memo(function AppImage({
     fill = false,
     sizes,
     onClick,
-    fallbackSrc = '/assets/images/no_image.png',
+    fallbackSrc = DEFAULT_FALLBACK,
     loading = 'lazy',
     unoptimized = false,
     ...props
@@ -44,9 +47,23 @@ const AppImage = memo(function AppImage({
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
 
-    const isExternalUrl = useMemo(() => typeof imageSrc === 'string' && imageSrc.startsWith('http'), [imageSrc]);
-    const resolvedUnoptimized = unoptimized || isExternalUrl;
+    // ✅ Check if URL is external - memoized
+    const isExternalUrl = useMemo(() => {
+        if (typeof imageSrc !== 'string') return false;
+        return imageSrc.startsWith('http://') || imageSrc.startsWith('https://');
+    }, [imageSrc]);
 
+    // ✅ Use unoptimized only for external URLs or when explicitly set
+    const resolvedUnoptimized = useMemo(() => {
+        return unoptimized || isExternalUrl;
+    }, [unoptimized, isExternalUrl]);
+
+    // ✅ Generate optimized sizes
+    const defaultSizes = useMemo(() => {
+        return sizes || '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw';
+    }, [sizes]);
+
+    // ✅ Handle error with proper state management
     const handleError = useCallback(() => {
         if (!hasError && imageSrc !== fallbackSrc) {
             setImageSrc(fallbackSrc);
@@ -55,11 +72,13 @@ const AppImage = memo(function AppImage({
         setIsLoading(false);
     }, [hasError, imageSrc, fallbackSrc]);
 
+    // ✅ Handle load with proper state management
     const handleLoad = useCallback(() => {
         setIsLoading(false);
         setHasError(false);
     }, []);
 
+    // ✅ Memoize className
     const imageClassName = useMemo(() => {
         const classes = [className];
         if (isLoading) classes.push('bg-gray-200');
@@ -67,6 +86,7 @@ const AppImage = memo(function AppImage({
         return classes.filter(Boolean).join(' ');
     }, [className, isLoading, onClick]);
 
+    // ✅ Memoize image props
     const imageProps = useMemo(() => {
         const baseProps: any = {
             src: imageSrc,
@@ -78,6 +98,7 @@ const AppImage = memo(function AppImage({
             onError: handleError,
             onLoad: handleLoad,
             onClick,
+            sizes: defaultSizes,
         };
 
         if (priority) {
@@ -91,15 +112,33 @@ const AppImage = memo(function AppImage({
         }
 
         return baseProps;
-    }, [imageSrc, alt, imageClassName, quality, placeholder, blurDataURL, resolvedUnoptimized, priority, loading, handleError, handleLoad, onClick]);
+    }, [
+        imageSrc,
+        alt,
+        imageClassName,
+        quality,
+        placeholder,
+        blurDataURL,
+        resolvedUnoptimized,
+        priority,
+        loading,
+        handleError,
+        handleLoad,
+        onClick,
+        defaultSizes,
+    ]);
 
     if (fill) {
         return (
-            <div className="relative" style={{ width: '100%', height: '100%' }}>
+            <div
+                className="relative"
+                style={{ width: '100%', height: '100%' }}
+                aria-hidden={!alt}
+            >
                 <Image
                     {...imageProps}
                     fill
-                    sizes={sizes || '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'}
+                    sizes={defaultSizes}
                     style={{ objectFit: 'cover' }}
                     {...props}
                 />
@@ -112,7 +151,6 @@ const AppImage = memo(function AppImage({
             {...imageProps}
             width={width || 400}
             height={height || 300}
-            sizes={sizes}
             {...props}
         />
     );
