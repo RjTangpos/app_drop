@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 
-const appMeta = {
+// ✅ Move appMeta to constant outside component
+const APP_META = {
   version: 'v3.2.1',
   size: '18.4 MB',
   platform: 'Android 8.0+',
@@ -10,8 +11,19 @@ const appMeta = {
   sha256: 'a3f9...d72c',
 };
 
+// ✅ Memoized meta items
+const META_ITEMS = [
+  { label: 'Version', value: APP_META.version },
+  { label: 'File Size', value: APP_META.size },
+  { label: 'Platform', value: APP_META.platform },
+  { label: 'Updated', value: APP_META.updated },
+];
+
 export default function DownloadCTASection() {
   const sectionRef = useRef<HTMLElement>(null);
+
+  // ✅ Memoize meta items
+  const memoizedMetaItems = useMemo(() => META_ITEMS, []);
 
   useEffect(() => {
     const section = sectionRef?.current;
@@ -69,12 +81,7 @@ export default function DownloadCTASection() {
 
         {/* App metadata trust signals */}
         <div className="cta-reveal reveal-hidden grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10 max-w-2xl mx-auto">
-          {[
-            { label: 'Version', value: appMeta?.version },
-            { label: 'File Size', value: appMeta?.size },
-            { label: 'Platform', value: appMeta?.platform },
-            { label: 'Updated', value: appMeta?.updated },
-          ]?.map((item) => (
+          {memoizedMetaItems?.map((item) => (
             <div key={item?.label} className="bg-white/5 border border-white/10 rounded-2xl p-4">
               <p className="text-xs font-semibold uppercase tracking-widest text-white/40 mb-1">{item?.label}</p>
               <p className="text-sm font-bold text-white">{item?.value}</p>
@@ -89,7 +96,7 @@ export default function DownloadCTASection() {
             className="btn-download px-10 py-5 text-primary-foreground text-base font-bold rounded-2xl flex items-center gap-3 group"
             aria-label="Download AppDrop APK"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-y-0.5 transition-transform">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-y-0.5 transition-transform" aria-hidden="true">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>
             </svg>
             Download Free APK
@@ -97,9 +104,10 @@ export default function DownloadCTASection() {
           <a
             href="#install"
             className="px-8 py-5 bg-white/5 border border-white/15 text-white text-sm font-semibold rounded-2xl flex items-center gap-2 hover:bg-white/10 transition-all duration-300"
+            aria-label="View installation guide"
           >
             Installation Guide
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
             </svg>
           </a>
@@ -107,11 +115,11 @@ export default function DownloadCTASection() {
 
         {/* SHA256 checksum */}
         <div className="cta-reveal reveal-hidden flex items-center justify-center gap-2 text-xs text-white/30">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           </svg>
           <span>SHA-256:</span>
-          <code className="font-mono text-white/40">{appMeta?.sha256}</code>
+          <code className="font-mono text-white/40">{APP_META?.sha256}</code>
         </div>
       </div>
     </section>

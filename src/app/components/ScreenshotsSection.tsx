@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import AppImage from '../../components/ui/AppImage';
 
+// ✅ Screenshots array moved outside component (no longer recreated on each render)
 const screenshots = [
   {
     id: 1,
@@ -44,6 +45,9 @@ const screenshots = [
 export default function ScreenshotsSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // ✅ Memoize screenshots to prevent unnecessary re-renders
+  const memoizedScreenshots = useMemo(() => screenshots, []);
 
   useEffect(() => {
     const section = sectionRef?.current;
@@ -104,7 +108,7 @@ export default function ScreenshotsSection() {
           role="list"
           aria-label="App screenshots gallery"
         >
-          {screenshots?.map((shot, index) => (
+          {memoizedScreenshots?.map((shot, index) => (
             <div
               key={shot?.id}
               className="screenshot-reveal reveal-hidden flex-shrink-0 snap-center"

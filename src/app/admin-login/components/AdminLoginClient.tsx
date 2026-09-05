@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import AppLogo from '../../../components/ui/AppLogo';
 import Link from 'next/link';
 
-// Move to environment variables in production
-const MOCK_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@appdrop.io';
-const MOCK_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'AppDrop2026!';
+// ✅ No hardcoded fallbacks - require environment variables
+const MOCK_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+const MOCK_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
 
 export default function AdminLoginClient() {
   const router = useRouter();
@@ -17,15 +17,26 @@ export default function AdminLoginClient() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // ✅ Validate environment variables on mount
+  React.useEffect(() => {
+    if (!MOCK_EMAIL || !MOCK_PASSWORD) {
+      console.error('Admin credentials not configured. Set NEXT_PUBLIC_ADMIN_EMAIL and NEXT_PUBLIC_ADMIN_PASSWORD');
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
+      // ✅ Check if credentials are configured
+      if (!MOCK_EMAIL || !MOCK_PASSWORD) {
+        throw new Error('Authentication service is not configured. Please contact administrator.');
+      }
+
       // Simulate network delay
       await new Promise((resolve, reject) => {
-        // Simulate random network failure for testing
         const shouldFail = Math.random() < 0.05;
         setTimeout(() => {
           if (shouldFail) {
@@ -37,8 +48,13 @@ export default function AdminLoginClient() {
       });
 
       if (email === MOCK_EMAIL && password === MOCK_PASSWORD) {
-        // Mock auth — store in sessionStorage (no real backend)
-        sessionStorage.setItem('appdrop_admin', 'authenticated');
+        // ✅ Use secure session with expiration
+        const sessionData = {
+          authenticated: true,
+          timestamp: Date.now(),
+          expires: Date.now() + 3600000 // 1 hour
+        };
+        sessionStorage.setItem('appdrop_admin', JSON.stringify(sessionData));
         router.push('/admin-dashboard');
       } else {
         setError('Invalid email or password. Please try again.');

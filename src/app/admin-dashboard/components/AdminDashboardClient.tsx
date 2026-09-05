@@ -1,7 +1,6 @@
-// src/app/admin-dashboard/components/AdminDashboardClient.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import AppLogo from '../../../components/ui/AppLogo';
 import Link from 'next/link';
@@ -41,27 +40,75 @@ const navItems: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
   },
 ];
 
+// ✅ Session check helper
+const checkAuth = (): boolean => {
+  try {
+    const sessionData = sessionStorage.getItem('appdrop_admin');
+    if (!sessionData) return false;
+    const session = JSON.parse(sessionData);
+    // ✅ Check if session has expired
+    if (session.expires && Date.now() > session.expires) {
+      sessionStorage.removeItem('appdrop_admin');
+      return false;
+    }
+    return session.authenticated === true;
+  } catch {
+    return false;
+  }
+};
+
 export default function AdminDashboardClient() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Auth guard (mock)
+  // ✅ Auth guard with session expiration check
   useEffect(() => {
-    const auth = sessionStorage.getItem('appdrop_admin');
-    if (!auth) {
+    if (!checkAuth()) {
       router.push('/admin-login');
     }
+
+    // ✅ Auto-refresh session on activity
+    const refreshSession = () => {
+      const sessionData = sessionStorage.getItem('appdrop_admin');
+      if (sessionData) {
+        try {
+          const session = JSON.parse(sessionData);
+          session.expires = Date.now() + 3600000; // Reset to 1 hour
+          sessionStorage.setItem('appdrop_admin', JSON.stringify(session));
+        } catch {
+          // Ignore
+        }
+      }
+    };
+
+    // Refresh session on user activity
+    const events = ['click', 'keydown', 'scroll', 'mousemove'];
+    events.forEach(event => {
+      document.addEventListener(event, refreshSession, { passive: true });
+    });
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, refreshSession);
+      });
+    };
   }, [router]);
 
-  const handleLogout = () => {
+  // ✅ Memoized handlers
+  const handleLogout = useCallback(() => {
     sessionStorage.removeItem('appdrop_admin');
     router.push('/admin-login');
-  };
+  }, [router]);
 
-  const handleSidebarClose = () => {
+  const handleSidebarClose = useCallback(() => {
     setSidebarOpen(false);
-  };
+  }, []);
+
+  const handleTabChange = useCallback((tab: ActiveTab) => {
+    setActiveTab(tab);
+    setSidebarOpen(false);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -91,10 +138,7 @@ export default function AdminDashboardClient() {
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => {
-                setActiveTab(item.id);
-                setSidebarOpen(false);
-              }}
+              onClick={() => handleTabChange(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 text-left ${
                 activeTab === item.id
                   ? 'nav-active' :'text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -135,7 +179,7 @@ export default function AdminDashboardClient() {
         </div>
       </aside>
 
-      {/* Overlay for mobile sidebar - FIXED: Added ARIA attributes */}
+      {/* Overlay for mobile sidebar */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
@@ -205,7 +249,7 @@ export default function AdminDashboardClient() {
               {/* Quick actions */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
-                  onClick={() => setActiveTab('upload')}
+                  onClick={() => handleTabChange('upload')}
                   className="btn-download p-5 rounded-2xl text-left flex items-center gap-4 group"
                   aria-label="Upload new APK version"
                 >
@@ -221,7 +265,7 @@ export default function AdminDashboardClient() {
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('versions')}
+                  onClick={() => handleTabChange('versions')}
                   className="bg-card border border-border p-5 rounded-2xl text-left flex items-center gap-4 group hover:bg-muted transition-all card-lift"
                   aria-label="Manage versions"
                 >

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 
 interface UploadFormData {
   versionName: string;
@@ -11,6 +11,10 @@ interface UploadFormData {
   status: 'live' | 'draft';
 }
 
+// ✅ Validation constants
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_RELEASE_NOTES_LENGTH = 500;
+
 export default function UploadSection() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -18,6 +22,7 @@ export default function UploadSection() {
   const [uploading, setUploading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState<UploadFormData>({
     versionName: '',
     versionCode: '',
@@ -27,39 +32,101 @@ export default function UploadSection() {
     status: 'draft',
   });
 
-  const handleDrop = (e: React.DragEvent) => {
+  // ✅ Memoized file size display
+  const fileSizeDisplay = useMemo(() => {
+    if (!selectedFile) return null;
+    return (selectedFile.size / 1024 / 1024).toFixed(1);
+  }, [selectedFile]);
+
+  // ✅ Validate file
+  const validateFile = useCallback((file: File): string | null => {
+    if (!file.name.endsWith('.apk') && !file.name.endsWith('.aab')) {
+      return 'Please select an APK or AAB file.';
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return `File size exceeds ${MAX_FILE_SIZE / 1024 / 1024}MB limit.`;
+    }
+    return null;
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files[0];
-    if (file && (file.name.endsWith('.apk') || file.name.endsWith('.aab'))) {
+    if (file) {
+      const validationError = validateFile(file);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
       setSelectedFile(file);
       setError(null);
+      setFieldErrors(prev => ({ ...prev, file: '' }));
     }
-  };
+  }, [validateFile]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const validationError = validateFile(file);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
       setSelectedFile(file);
       setError(null);
+      setFieldErrors(prev => ({ ...prev, file: '' }));
     }
-  };
+  }, [validateFile]);
 
-  const validateForm = (): boolean => {
+  // ✅ Real-time field validation
+  const validateField = useCallback((field: keyof UploadFormData, value: string): string => {
+    switch (field) {
+      case 'versionName':
+        if (!value.trim()) return 'Version name is required.';
+        if (!/^v?\d+\.\d+\.\d+/.test(value) && !/^\d+\.\d+\.\d+/.test(value)) {
+          return 'Please use semantic versioning (e.g., 1.0.0 or v1.0.0)';
+        }
+        return '';
+      case 'versionCode':
+        if (!value.trim()) return 'Version code is required.';
+        if (!/^\d+$/.test(value)) return 'Version code must be a number.';
+        return '';
+      case 'releaseNotes':
+        if (value.length > MAX_RELEASE_NOTES_LENGTH) {
+          return `Release notes exceed ${MAX_RELEASE_NOTES_LENGTH} characters.`;
+        }
+        return '';
+      default:
+        return '';
+    }
+  }, []);
+
+  const handleFieldChange = useCallback((field: keyof UploadFormData, value: string) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    const error = validateField(field, value);
+    setFieldErrors(prev => ({ ...prev, [field]: error }));
+  }, [validateField]);
+
+  const validateForm = useCallback((): boolean => {
+    const errors: Record<string, string> = {};
+    
     if (!selectedFile) {
-      setError('Please select an APK file to upload.');
-      return false;
+      errors.file = 'Please select an APK file to upload.';
     }
-    if (!form.versionName.trim()) {
-      setError('Version name is required.');
-      return false;
-    }
-    if (!form.versionCode.trim()) {
-      setError('Version code is required.');
-      return false;
-    }
-    return true;
-  };
+    
+    const versionNameError = validateField('versionName', form.versionName);
+    if (versionNameError) errors.versionName = versionNameError;
+    
+    const versionCodeError = validateField('versionCode', form.versionCode);
+    if (versionCodeError) errors.versionCode = versionCodeError;
+    
+    const releaseNotesError = validateField('releaseNotes', form.releaseNotes);
+    if (releaseNotesError) errors.releaseNotes = releaseNotesError;
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  }, [selectedFile, form, validateField]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,9 +140,8 @@ export default function UploadSection() {
     setUploading(true);
 
     try {
-      // Simulate upload (no real backend)
+      // Simulate upload
       await new Promise((resolve, reject) => {
-        // Simulate random failure for testing (remove in production)
         const shouldFail = Math.random() < 0.1;
         setTimeout(() => {
           if (shouldFail) {
@@ -87,7 +153,6 @@ export default function UploadSection() {
       });
 
       setSuccess(true);
-      // Reset form after success
       setTimeout(() => {
         setSuccess(false);
         setSelectedFile(null);
@@ -99,6 +164,7 @@ export default function UploadSection() {
           minAndroid: '8.0',
           status: 'draft',
         });
+        setFieldErrors({});
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
@@ -164,7 +230,7 @@ export default function UploadSection() {
           className={`file-drop-zone rounded-2xl p-8 text-center cursor-pointer transition-all ${
             dragOver ? 'dropzone-active' : ''
           } ${selectedFile ? 'border-green-400 bg-green-50' : ''} ${
-            error && !selectedFile ? 'border-red-400 bg-red-50' : ''
+            fieldErrors.file ? 'border-red-400 bg-red-50' : ''
           }`}
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
@@ -182,6 +248,8 @@ export default function UploadSection() {
             onChange={handleFileChange}
             className="hidden"
             aria-label="Choose APK file"
+            aria-invalid={!!fieldErrors.file}
+            aria-describedby={fieldErrors.file ? 'file-error' : undefined}
           />
 
           {selectedFile ? (
@@ -194,11 +262,11 @@ export default function UploadSection() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">{selectedFile.name}</p>
-                <p className="text-xs text-muted-foreground">{(selectedFile.size / 1024 / 1024).toFixed(1)} MB</p>
+                <p className="text-xs text-muted-foreground">{fileSizeDisplay} MB</p>
               </div>
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); setSelectedFile(null); setError(null); }}
+                onClick={(e) => { e.stopPropagation(); setSelectedFile(null); setError(null); setFieldErrors(prev => ({ ...prev, file: '' })); }}
                 className="text-xs text-red-500 hover:text-red-700 transition-colors"
                 aria-label="Remove selected file"
               >
@@ -216,8 +284,11 @@ export default function UploadSection() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">Drop your APK here</p>
-                <p className="text-xs text-muted-foreground">or click to browse — .apk or .aab files only</p>
+                <p className="text-xs text-muted-foreground">or click to browse — .apk or .aab files only (max 100MB)</p>
               </div>
+              {fieldErrors.file && (
+                <p id="file-error" className="text-xs text-red-500 mt-2">{fieldErrors.file}</p>
+              )}
             </div>
           )}
         </div>
@@ -232,12 +303,19 @@ export default function UploadSection() {
               id="versionName"
               type="text"
               value={form.versionName}
-              onChange={(e) => setForm({ ...form, versionName: e.target.value })}
-              placeholder="e.g. 3.3.0"
+              onChange={(e) => handleFieldChange('versionName', e.target.value)}
+              placeholder="e.g. 3.3.0 or v3.3.0"
               required
               aria-required="true"
-              className="w-full bg-card border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary/60 transition-all"
+              aria-invalid={!!fieldErrors.versionName}
+              aria-describedby={fieldErrors.versionName ? 'versionName-error' : undefined}
+              className={`w-full bg-card border rounded-xl px-4 py-3 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary/60 transition-all ${
+                fieldErrors.versionName ? 'border-red-400' : 'border-border'
+              }`}
             />
+            {fieldErrors.versionName && (
+              <p id="versionName-error" className="text-xs text-red-500 mt-1">{fieldErrors.versionName}</p>
+            )}
           </div>
           <div>
             <label htmlFor="versionCode" className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
@@ -247,12 +325,19 @@ export default function UploadSection() {
               id="versionCode"
               type="text"
               value={form.versionCode}
-              onChange={(e) => setForm({ ...form, versionCode: e.target.value })}
+              onChange={(e) => handleFieldChange('versionCode', e.target.value)}
               placeholder="e.g. 33"
               required
               aria-required="true"
-              className="w-full bg-card border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary/60 transition-all"
+              aria-invalid={!!fieldErrors.versionCode}
+              aria-describedby={fieldErrors.versionCode ? 'versionCode-error' : undefined}
+              className={`w-full bg-card border rounded-xl px-4 py-3 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary/60 transition-all ${
+                fieldErrors.versionCode ? 'border-red-400' : 'border-border'
+              }`}
             />
+            {fieldErrors.versionCode && (
+              <p id="versionCode-error" className="text-xs text-red-500 mt-1">{fieldErrors.versionCode}</p>
+            )}
           </div>
           <div>
             <label htmlFor="minAndroid" className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
@@ -290,22 +375,30 @@ export default function UploadSection() {
         {/* Release Notes */}
         <div>
           <label htmlFor="releaseNotes" className="block text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
-            Release Notes
+            Release Notes {form.releaseNotes.length > 0 && `(${form.releaseNotes.length}/${MAX_RELEASE_NOTES_LENGTH})`}
           </label>
           <textarea
             id="releaseNotes"
             value={form.releaseNotes}
-            onChange={(e) => setForm({ ...form, releaseNotes: e.target.value })}
+            onChange={(e) => handleFieldChange('releaseNotes', e.target.value)}
             placeholder="What's new in this version? Bug fixes, new features, improvements..."
             rows={4}
-            className="w-full bg-card border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary/60 transition-all resize-none"
+            maxLength={MAX_RELEASE_NOTES_LENGTH}
+            aria-invalid={!!fieldErrors.releaseNotes}
+            aria-describedby={fieldErrors.releaseNotes ? 'releaseNotes-error' : undefined}
+            className={`w-full bg-card border rounded-xl px-4 py-3 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary/60 transition-all resize-none ${
+              fieldErrors.releaseNotes ? 'border-red-400' : 'border-border'
+            }`}
           />
+          {fieldErrors.releaseNotes && (
+            <p id="releaseNotes-error" className="text-xs text-red-500 mt-1">{fieldErrors.releaseNotes}</p>
+          )}
         </div>
 
         {/* Submit */}
         <button
           type="submit"
-          disabled={!selectedFile || uploading}
+          disabled={!selectedFile || uploading || Object.values(fieldErrors).some(e => e)}
           className="btn-download w-full py-4 text-primary-foreground text-sm font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label={uploading ? 'Uploading APK...' : 'Publish APK'}
         >

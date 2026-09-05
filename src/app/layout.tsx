@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { DM_Sans, JetBrains_Mono } from 'next/font/google';
 import '../styles/tailwind.css';
 import ErrorBoundary from '../components/ErrorBoundary';
+import { env } from '../lib/env'; // ✅ Import env
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -24,7 +25,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+  metadataBase: new URL(env.siteUrl),
   title: 'AppDrop — Download the App',
   description: 'AppDrop is the easiest way to get the mobile app on your device. Browse features, see screenshots, and download the latest version instantly.',
   icons: {
