@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import AppLogo from '../../components/ui/AppLogo';
+import AppLogo from '../../../components/ui/AppLogo';
 import Link from 'next/link';
 import UploadSection from './UploadSection';
 import VersionsTable from './VersionsTable';
