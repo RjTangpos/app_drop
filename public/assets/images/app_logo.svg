@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1A1AFF"/>
+      <stop offset="100%" style="stop-color:#00E5FF"/>
+    </linearGradient>
+    <linearGradient id="dropGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0.8"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#1A1AFF" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Rounded rectangle background -->
+  <rect width="512" height="512" rx="112" ry="112" fill="url(#bgGradient)"/>
+
+  <!-- Download arrow / drop shape -->
+  <g transform="translate(256, 256)" filter="url(#shadow)">
+    <!-- Cloud top -->
+    <path d="M-80,-50 C-80,-90 -40,-120 0,-120 C40,-120 80,-90 80,-50 C100,-50 120,-30 120,-10 C120,10 100,30 80,30 L-80,30 C-100,30 -120,10 -120,-10 C-120,-30 -100,-50 -80,-50 Z" 
+          fill="url(#dropGradient)" opacity="0.9"/>
+    
+    <!-- Download arrow -->
+    <g transform="translate(0, 20)">
+      <!-- Arrow shaft -->
+      <line x1="0" y1="-20" x2="0" y2="50" stroke="#1A1AFF" stroke-width="12" stroke-linecap="round"/>
+      
+      <!-- Arrow head -->
+      <polyline points="-20,30 0,50 20,30" fill="none" stroke="#1A1AFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+
+  <!-- AppDrop text (optional - if you want text in the logo) -->
+  <text x="256" y="450" font-family="'DM Sans', sans-serif" font-size="48" font-weight="700" fill="white" text-anchor="middle" letter-spacing="2">
+    AppDrop
+  </text>
+</svg>
