@@ -1,28 +1,30 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { signIn, useSession } from 'next-auth/react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import AppLogo from '../../../components/ui/AppLogo';
 import Link from 'next/link';
 
-// ✅ No hardcoded fallbacks - require environment variables
-const MOCK_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-const MOCK_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
-
 export default function AdminLoginClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // ✅ Validate environment variables on mount
-  React.useEffect(() => {
-    if (!MOCK_EMAIL || !MOCK_PASSWORD) {
-      console.error('Admin credentials not configured. Set NEXT_PUBLIC_ADMIN_EMAIL and NEXT_PUBLIC_ADMIN_PASSWORD');
+  const callbackUrl = searchParams?.get('callbackUrl') || '/admin-dashboard';
+
+  // ✅ Redirect if already authenticated
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.push(callbackUrl);
     }
-  }, []);
+  }, [status, router, callbackUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,42 +32,45 @@ export default function AdminLoginClient() {
     setLoading(true);
 
     try {
-      // ✅ Check if credentials are configured
-      if (!MOCK_EMAIL || !MOCK_PASSWORD) {
-        throw new Error('Authentication service is not configured. Please contact administrator.');
-      }
-
-      // Simulate network delay
-      await new Promise((resolve, reject) => {
-        const shouldFail = Math.random() < 0.05;
-        setTimeout(() => {
-          if (shouldFail) {
-            reject(new Error('Network error: Unable to connect to authentication service.'));
-          } else {
-            resolve(true);
-          }
-        }, 900);
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+        callbackUrl,
       });
 
-      if (email === MOCK_EMAIL && password === MOCK_PASSWORD) {
-        // ✅ Use secure session with expiration
-        const sessionData = {
-          authenticated: true,
-          timestamp: Date.now(),
-          expires: Date.now() + 3600000 // 1 hour
-        };
-        sessionStorage.setItem('appdrop_admin', JSON.stringify(sessionData));
-        router.push('/admin-dashboard');
-      } else {
-        setError('Invalid email or password. Please try again.');
+      if (result?.error) {
+        // ✅ Better error messages
+        if (result.error === 'CredentialsSignin') {
+          setError('Invalid email or password. Please try again.');
+        } else {
+          setError(result.error);
+        }
         setLoading(false);
+        return;
+      }
+
+      if (result?.ok) {
+        router.push(callbackUrl);
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.';
-      setError(errorMessage);
+      console.error('Login error:', err);
+      setError('An unexpected error occurred. Please try again.');
       setLoading(false);
     }
   };
+
+  // ✅ Show loading state
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-surface-dark flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  // ✅ Check if authentication is configured
+  const isAuthConfigured = process.env.NEXTAUTH_SECRET && process.env.DATABASE_URL;
 
   return (
     <div className="min-h-screen bg-surface-dark flex items-center justify-center relative overflow-hidden px-4">
@@ -109,6 +114,23 @@ export default function AdminLoginClient() {
             Sign in to manage your app distribution.
           </p>
 
+          {/* ⚠️ Configuration Warning */}
+          {!isAuthConfigured && (
+            <div
+              className="mb-6 flex items-center gap-2 px-4 py-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl"
+              role="alert"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-400 flex-shrink-0">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <p className="text-xs text-yellow-400">
+                Authentication service is not configured. Please set up your environment variables.
+              </p>
+            </div>
+          )}
+
           {/* Error Alert */}
           {error && (
             <div
@@ -125,108 +147,121 @@ export default function AdminLoginClient() {
             </div>
           )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-            {/* Email */}
-            <div>
-              <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-widest text-white/50 mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" aria-hidden="true">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="20" height="16" x="2" y="4" rx="2"/>
-                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-                  </svg>
-                </div>
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@appdrop.io"
-                  required
-                  aria-required="true"
-                  autoComplete="email"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-primary/60 focus:bg-white/8 transition-all"
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-widest text-white/50 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" aria-hidden="true">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                  </svg>
-                </div>
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  aria-required="true"
-                  autoComplete="current-password"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-12 py-3.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-primary/60 focus:bg-white/8 transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? (
+          {/* Form - Only show if configured */}
+          {isAuthConfigured ? (
+            <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+              {/* Email */}
+              <div>
+                <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-widest text-white/50 mb-2">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" aria-hidden="true">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                      <line x1="1" x2="23" y1="1" y2="23"/>
+                      <rect width="20" height="16" x="2" y="4" rx="2"/>
+                      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
                     </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                      <circle cx="12" cy="12" r="3"/>
-                    </svg>
-                  )}
-                </button>
+                  </div>
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="admin@appdrop.io"
+                    required
+                    aria-required="true"
+                    autoComplete="email"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-primary/60 focus:bg-white/8 transition-all"
+                  />
+                </div>
               </div>
+
+              {/* Password */}
+              <div>
+                <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-widest text-white/50 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  </div>
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    aria-required="true"
+                    autoComplete="current-password"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-12 py-3.5 text-sm text-white placeholder-white/25 focus:outline-none focus:border-primary/60 focus:bg-white/8 transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                        <line x1="1" x2="23" y1="1" y2="23"/>
+                      </svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-download w-full py-4 text-primary-foreground text-sm font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                aria-label={loading ? 'Signing in...' : 'Sign in to admin panel'}
+              >
+                {loading ? (
+                  <>
+                    <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                    </svg>
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    Sign In
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12h14"/>
+                      <path d="m12 5 7 7-7 7"/>
+                    </svg>
+                  </>
+                )}
+              </button>
+            </form>
+          ) : (
+            // ✅ Show configuration instructions when not configured
+            <div className="space-y-4">
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <h3 className="text-sm font-semibold text-white mb-2">To fix this issue:</h3>
+                <ol className="text-xs text-white/60 space-y-2 list-decimal list-inside">
+                  <li>Open your <code className="text-primary">.env</code> file</li>
+                  <li>Set <code className="text-primary">NEXTAUTH_SECRET</code> to a secure value</li>
+                  <li>Set <code className="text-primary">DATABASE_URL</code> to your database connection</li>
+                  <li>Restart the development server</li>
+                </ol>
+              </div>
+              <p className="text-center text-xs text-white/25 mt-4">
+                Contact your system administrator for configuration assistance.
+              </p>
             </div>
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-download w-full py-4 text-primary-foreground text-sm font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-              aria-label={loading ? 'Signing in...' : 'Sign in to admin panel'}
-            >
-              {loading ? (
-                <>
-                  <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                  </svg>
-                  Signing in...
-                </>
-              ) : (
-                <>
-                  Sign In
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 12h14"/>
-                    <path d="m12 5 7 7-7 7"/>
-                  </svg>
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* Hint */}
-          <p className="text-center text-xs text-white/25 mt-6">
-            Admin access only. Not a public registration page.
-          </p>
+          )}
         </div>
       </div>
     </div>

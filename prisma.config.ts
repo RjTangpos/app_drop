@@ -2,12 +2,18 @@ import { defineConfig } from 'prisma/config';
 import dotenv from 'dotenv';
 import { resolve } from 'path';
 
-const result = dotenv.config();
+const envPath = resolve(process.cwd(), '.env');
+console.log('Loading .env from:', envPath);
+
+const result = dotenv.config({ path: envPath });
 
 if (result.error) {
-  console.warn('⚠️ No .env file found or error loading it:', result.error.message);
+  console.error('❌ Error loading .env:', result.error.message);
 } else {
-  console.log('✅ .env file loaded successfully');
+  console.log('✅ .env loaded successfully');
+  console.log('📋 DATABASE_URL:', !!process.env.DATABASE_URL);
+  console.log('📋 NEXTAUTH_SECRET:', !!process.env.NEXTAUTH_SECRET);
+  console.log('📋 NEXTAUTH_URL:', process.env.NEXTAUTH_URL);
 }
 
 export default defineConfig({
@@ -16,5 +22,6 @@ export default defineConfig({
   },
   migrations: {
     path: './prisma/migrations',
+    seed: 'npx tsx prisma/seed.ts',
   },
 });
