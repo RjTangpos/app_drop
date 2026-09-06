@@ -5,10 +5,13 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import bcrypt from "bcryptjs";
+import { logger } from "./logger";
+import { loginSchema } from "./validation";
+import { checkRateLimit } from "./rate-limit";
 
 // ✅ Check if DATABASE_URL is set
 if (!process.env.DATABASE_URL) {
-  console.error('❌ DATABASE_URL is not set in environment variables');
+  logger.error('❌ DATABASE_URL is not set in environment variables');
   throw new Error('DATABASE_URL is required. Please check your .env file.');
 }
 
@@ -25,7 +28,7 @@ const prisma = new PrismaClient({ adapter });
 
 // ✅ Check if NEXTAUTH_SECRET is set
 if (!process.env.NEXTAUTH_SECRET) {
-  console.error('❌ NEXTAUTH_SECRET is not set in environment variables');
+  logger.error('❌ NEXTAUTH_SECRET is not set in environment variables');
   throw new Error('NEXTAUTH_SECRET is required. Please check your .env file.');
 }
 
@@ -40,8 +43,29 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         try {
+          // ✅ Rate limiting
+          const ip = credentials?.ip || 'unknown';
+          const rateLimitResult = await checkRateLimit(`auth:${ip}`);
+          
+          if (!rateLimitResult.success) {
+            logger.warn(`Rate limit exceeded for IP: ${ip}`);
+            throw new Error('Too many login attempts. Please try again later.');
+          }
+
           if (!credentials?.email || !credentials?.password) {
             throw new Error("Email and password are required");
+          }
+
+          // ✅ Validate input
+          const validated = loginSchema.safeParse({
+            email: credentials.email,
+            password: credentials.password,
+          });
+
+          if (!validated.success) {
+            const errors = validated.error.errors.map(e => e.message).join(', ');
+            logger.warn(`Login validation failed: ${errors}`);
+            throw new Error("Invalid credentials format");
           }
 
           const user = await prisma.user.findUnique({
@@ -49,14 +73,18 @@ export const authOptions: NextAuthOptions = {
           });
 
           if (!user || !user.password) {
+            logger.warn(`Login attempt for non-existent user: ${credentials.email}`);
             throw new Error("Invalid email or password");
           }
 
           const isValid = await bcrypt.compare(credentials.password, user.password);
 
           if (!isValid) {
+            logger.warn(`Failed login attempt for user: ${credentials.email}`);
             throw new Error("Invalid email or password");
           }
+
+          logger.info(`User logged in: ${user.email}`);
 
           return {
             id: user.id,
@@ -65,7 +93,7 @@ export const authOptions: NextAuthOptions = {
             role: user.role,
           };
         } catch (error) {
-          console.error('Authorize error:', error);
+          logger.error('Authorize error:', error);
           return null;
         }
       },
@@ -96,7 +124,7 @@ export const authOptions: NextAuthOptions = {
     error: "/admin-login",
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === 'development', // ✅ Enable debug in development
+  debug: process.env.NODE_ENV === 'development',
 };
 
 // Extend NextAuth types

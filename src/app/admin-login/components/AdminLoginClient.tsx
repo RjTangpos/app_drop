@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { signIn, useSession } from 'next-auth/react';
+import { signIn, useSession, getCsrfToken } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AppLogo from '../../../components/ui/AppLogo';
 import Link from 'next/link';
@@ -16,8 +16,16 @@ export default function AdminLoginClient() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [csrfToken, setCsrfToken] = useState('');
 
   const callbackUrl = searchParams?.get('callbackUrl') || '/admin-dashboard';
+
+  // ✅ Get CSRF token
+  useEffect(() => {
+    getCsrfToken().then((token) => {
+      setCsrfToken(token || '');
+    });
+  }, []);
 
   // ✅ Redirect if already authenticated
   useEffect(() => {
@@ -35,6 +43,7 @@ export default function AdminLoginClient() {
       const result = await signIn('credentials', {
         email,
         password,
+        csrfToken,
         redirect: false,
         callbackUrl,
       });
@@ -43,6 +52,8 @@ export default function AdminLoginClient() {
         // ✅ Better error messages
         if (result.error === 'CredentialsSignin') {
           setError('Invalid email or password. Please try again.');
+        } else if (result.error.includes('rate limit') || result.error.includes('Too many')) {
+          setError('Too many login attempts. Please wait a moment and try again.');
         } else {
           setError(result.error);
         }
@@ -150,6 +161,9 @@ export default function AdminLoginClient() {
           {/* Form - Only show if configured */}
           {isAuthConfigured ? (
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+              {/* CSRF Token */}
+              <input type="hidden" name="csrfToken" value={csrfToken} />
+              
               {/* Email */}
               <div>
                 <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-widest text-white/50 mb-2">

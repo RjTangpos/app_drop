@@ -2,6 +2,7 @@
 
 import React, { Component, ReactNode } from 'react';
 import Icon from './ui/AppIcon';
+import { logger, logErrorBoundary } from '../lib/logger';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -31,8 +32,8 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log error to console or error reporting service
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    // Log error using logger
+    logErrorBoundary(error, errorInfo, 'ErrorBoundary');
     
     // Call optional onError callback
     if (this.props.onError) {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useMemo } from 'react';
 import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 
 type IconVariant = 'outline' | 'solid';
@@ -15,8 +15,8 @@ interface IconProps {
     [key: string]: any;
 }
 
-// ✅ Lazy load icons with proper types
-const iconLoaders: Record<string, () => Promise<any>> = {};
+// ✅ Icon registry for better performance
+const ICON_REGISTRY: Record<string, { outline: any; solid: any }> = {};
 
 // ✅ Only import icons that are actually used
 const ICON_WHITELIST = [
@@ -26,6 +26,29 @@ const ICON_WHITELIST = [
   'HomeIcon',
   'QuestionMarkCircleIcon',
 ];
+
+// ✅ Dynamic import function with caching
+async function loadIcon(name: string, variant: IconVariant) {
+  const cacheKey = `${name}-${variant}`;
+  
+  if (ICON_REGISTRY[name]?.[variant]) {
+    return ICON_REGISTRY[name][variant];
+  }
+
+  try {
+    const module = await import(`@heroicons/react/24/${variant === 'solid' ? 'solid' : 'outline'}`);
+    const Icon = module[name];
+    
+    if (!ICON_REGISTRY[name]) {
+      ICON_REGISTRY[name] = {} as any;
+    }
+    ICON_REGISTRY[name][variant] = Icon || QuestionMarkCircleIcon;
+    
+    return ICON_REGISTRY[name][variant];
+  } catch {
+    return QuestionMarkCircleIcon;
+  }
+}
 
 function Icon({
     name,
@@ -37,7 +60,7 @@ function Icon({
     ...props
 }: IconProps) {
     // ✅ Use React.lazy for dynamic imports
-    const IconComponent = React.useMemo(() => {
+    const IconComponent = useMemo(() => {
         // Check if icon is in whitelist
         if (!ICON_WHITELIST.includes(name)) {
             console.warn(`Icon "${name}" not found, using fallback`);

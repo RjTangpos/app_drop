@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession, signOut } from 'next-auth/react';
 import AppLogo from '../../../components/ui/AppLogo';
 import Link from 'next/link';
 import UploadSection from './UploadSection';
@@ -40,64 +41,22 @@ const navItems: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
   },
 ];
 
-// ✅ Session check helper
-const checkAuth = (): boolean => {
-  try {
-    const sessionData = sessionStorage.getItem('appdrop_admin');
-    if (!sessionData) return false;
-    const session = JSON.parse(sessionData);
-    // ✅ Check if session has expired
-    if (session.expires && Date.now() > session.expires) {
-      sessionStorage.removeItem('appdrop_admin');
-      return false;
-    }
-    return session.authenticated === true;
-  } catch {
-    return false;
-  }
-};
-
 export default function AdminDashboardClient() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // ✅ Auth guard with session expiration check
+  // Auth guard with NextAuth session
   useEffect(() => {
-    if (!checkAuth()) {
+    if (status === 'unauthenticated') {
       router.push('/admin-login');
     }
-
-    // ✅ Auto-refresh session on activity
-    const refreshSession = () => {
-      const sessionData = sessionStorage.getItem('appdrop_admin');
-      if (sessionData) {
-        try {
-          const session = JSON.parse(sessionData);
-          session.expires = Date.now() + 3600000; // Reset to 1 hour
-          sessionStorage.setItem('appdrop_admin', JSON.stringify(session));
-        } catch {
-          // Ignore
-        }
-      }
-    };
-
-    // Refresh session on user activity
-    const events = ['click', 'keydown', 'scroll', 'mousemove'];
-    events.forEach(event => {
-      document.addEventListener(event, refreshSession, { passive: true });
-    });
-
-    return () => {
-      events.forEach(event => {
-        document.removeEventListener(event, refreshSession);
-      });
-    };
-  }, [router]);
+  }, [status, router]);
 
   // ✅ Memoized handlers
-  const handleLogout = useCallback(() => {
-    sessionStorage.removeItem('appdrop_admin');
+  const handleLogout = useCallback(async () => {
+    await signOut({ redirect: false });
     router.push('/admin-login');
   }, [router]);
 
@@ -109,6 +68,20 @@ export default function AdminDashboardClient() {
     setActiveTab(tab);
     setSidebarOpen(false);
   }, []);
+
+  // Show loading state
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated
+  if (status === 'unauthenticated') {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -141,7 +114,7 @@ export default function AdminDashboardClient() {
               onClick={() => handleTabChange(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 text-left ${
                 activeTab === item.id
-                  ? 'nav-active' :'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  ? 'nav-active' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               }`}
               role="tab"
               aria-selected={activeTab === item.id}
@@ -229,7 +202,7 @@ export default function AdminDashboardClient() {
               role="img"
               aria-label="Admin user avatar"
             >
-              A
+              {session?.user?.name?.[0] || 'A'}
             </div>
           </div>
         </header>
