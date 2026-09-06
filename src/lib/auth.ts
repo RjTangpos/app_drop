@@ -6,8 +6,6 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import bcrypt from "bcryptjs";
 import { logger } from "./logger";
-import { loginSchema } from "./validation";
-import { checkRateLimit } from "./rate-limit";
 
 // ✅ Check if DATABASE_URL is set
 if (!process.env.DATABASE_URL) {
@@ -43,54 +41,37 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         try {
-          // ✅ Rate limiting
-          const ip = credentials?.ip || 'unknown';
-          const rateLimitResult = await checkRateLimit(`auth:${ip}`);
-          
-          if (!rateLimitResult.success) {
-            logger.warn(`Rate limit exceeded for IP: ${ip}`);
-            throw new Error('Too many login attempts. Please try again later.');
-          }
-
           if (!credentials?.email || !credentials?.password) {
-            throw new Error("Email and password are required");
+            logger.warn('Missing credentials');
+            return null;
           }
 
-          // ✅ Validate input
-          const validated = loginSchema.safeParse({
-            email: credentials.email,
-            password: credentials.password,
-          });
-
-          if (!validated.success) {
-            const errors = validated.error.errors.map(e => e.message).join(', ');
-            logger.warn(`Login validation failed: ${errors}`);
-            throw new Error("Invalid credentials format");
-          }
-
+          // Find user
           const user = await prisma.user.findUnique({
             where: { email: credentials.email },
           });
 
           if (!user || !user.password) {
-            logger.warn(`Login attempt for non-existent user: ${credentials.email}`);
-            throw new Error("Invalid email or password");
+            logger.warn(`User not found: ${credentials.email}`);
+            return null;
           }
 
+          // Verify password
           const isValid = await bcrypt.compare(credentials.password, user.password);
 
           if (!isValid) {
-            logger.warn(`Failed login attempt for user: ${credentials.email}`);
-            throw new Error("Invalid email or password");
+            logger.warn(`Invalid password for: ${credentials.email}`);
+            return null;
           }
 
-          logger.info(`User logged in: ${user.email}`);
+          logger.info(`User authenticated: ${user.email}`);
 
+          // Return user object without sensitive data
           return {
             id: user.id,
             email: user.email,
-            name: user.name,
-            role: user.role,
+            name: user.name || 'Admin',
+            role: user.role || 'ADMIN',
           };
         } catch (error) {
           logger.error('Authorize error:', error);
@@ -104,6 +85,8 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = user.role;
         token.id = user.id;
+        token.name = user.name;
+        token.email = user.email;
       }
       return token;
     },
@@ -111,13 +94,15 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.role = token.role as string;
         session.user.id = token.id as string;
+        session.user.name = token.name as string;
+        session.user.email = token.email as string;
       }
       return session;
     },
   },
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60,
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
     signIn: "/admin-login",
@@ -136,7 +121,7 @@ declare module "next-auth" {
     user: {
       id: string;
       email: string;
-      name?: string | null;
+      name: string;
       role?: string;
     };
   }
@@ -146,5 +131,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     role?: string;
     id?: string;
+    name?: string;
+    email?: string;
   }
 }
