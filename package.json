@@ -72,6 +72,7 @@
     "react": "19.0.3",
     "react-dom": "19.0.3",
     "recharts": "^2.15.2",
+    "uuid": "^14.0.2",
     "zod": "^4.5.4"
   },
   "devDependencies": {
@@ -83,6 +84,7 @@
     "@types/pg": "^8.23.1",
     "@types/react": "19.0.3",
     "@types/react-dom": "19.0.3",
+    "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.29.0",
     "@typescript-eslint/parser": "^8.29.0",
     "autoprefixer": "10.4.2",

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
 interface Version {
   id: string;
@@ -10,58 +10,12 @@ interface Version {
   size: string;
   platform: string;
   downloads: number;
-  publishedAt: string;
-  releaseNotes: string;
+  publishedAt: string | null;
+  releaseNotes: string | null;
+  filePath: string;
+  fileName: string;
 }
 
-const mockVersions: Version[] = [
-  {
-    id: '1',
-    version: 'v3.2.1',
-    code: 32,
-    status: 'live',
-    size: '18.4 MB',
-    platform: 'Android 8.0+',
-    downloads: 8241,
-    publishedAt: 'Aug 12, 2026',
-    releaseNotes: 'Fixed crash on Android 14, improved battery usage by 15%, updated UI components.',
-  },
-  {
-    id: '2',
-    version: 'v3.2.0',
-    code: 31,
-    status: 'archived',
-    size: '20.5 MB',
-    platform: 'Android 8.0+',
-    downloads: 12400,
-    publishedAt: 'Jul 28, 2026',
-    releaseNotes: 'Major UI refresh, dark mode improvements, new analytics dashboard.',
-  },
-  {
-    id: '3',
-    version: 'v3.1.4',
-    code: 30,
-    status: 'archived',
-    size: '19.8 MB',
-    platform: 'Android 8.0+',
-    downloads: 3200,
-    publishedAt: 'Jul 10, 2026',
-    releaseNotes: 'Security patch, performance improvements.',
-  },
-  {
-    id: '4',
-    version: 'v3.3.0-beta',
-    code: 33,
-    status: 'draft',
-    size: '19.1 MB',
-    platform: 'Android 9.0+',
-    downloads: 0,
-    publishedAt: 'Draft',
-    releaseNotes: 'New sync engine, experimental features.',
-  },
-];
-
-// ✅ Status config as constant outside component
 const STATUS_CONFIG = {
   live: { label: 'Live', className: 'badge-live' },
   draft: { label: 'Draft', className: 'badge-draft' },
@@ -69,49 +23,118 @@ const STATUS_CONFIG = {
 };
 
 export default function VersionsTable() {
+  const [versions, setVersions] = useState<Version[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // ✅ Memoize status config
-  const memoizedStatusConfig = useMemo(() => STATUS_CONFIG, []);
+  // ✅ Fetch versions from API
+  useEffect(() => {
+    fetchVersions();
+  }, []);
 
-  // ✅ Memoize versions
-  const memoizedVersions = useMemo(() => mockVersions, []);
+  const fetchVersions = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/upload');
+      if (!response.ok) {
+        throw new Error('Failed to fetch versions');
+      }
+      const data = await response.json();
+      setVersions(data.versions);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load versions');
+      console.error('Error fetching versions:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // ✅ Memoized handlers
   const toggleExpand = useCallback((id: string) => {
     setExpandedId(prev => prev === id ? null : id);
   }, []);
 
   const handleCopyLink = useCallback((version: string) => {
-    // Copy download link logic
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(`https://appdrop.io/download/${version}`).catch(() => {
-        // Fallback - copy using prompt
+    const url = `${window.location.origin}/api/download/${version}`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).catch(() => {
+        // Fallback
         const textArea = document.createElement('textarea');
-        textArea.value = `https://appdrop.io/download/${version}`;
+        textArea.value = url;
         document.body.appendChild(textArea);
         textArea.select();
-        try {
-          document.execCommand('copy');
-        } catch (err) {
-          console.error('Failed to copy:', err);
-        }
+        document.execCommand('copy');
         document.body.removeChild(textArea);
       });
     }
   }, []);
 
-  const handlePublish = useCallback((id: string) => {
-    // Publish logic
-    console.log('Publishing version:', id);
-    // In production, this would call an API
+  const handlePublish = useCallback(async (id: string) => {
+    try {
+      const response = await fetch(`/api/upload/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'live' }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to publish');
+      }
+      
+      await fetchVersions();
+    } catch (err) {
+      console.error('Error publishing version:', err);
+    }
   }, []);
 
-  const handleArchive = useCallback((id: string) => {
-    // Archive logic
-    console.log('Archiving version:', id);
-    // In production, this would call an API
+  const handleArchive = useCallback(async (id: string) => {
+    try {
+      const response = await fetch(`/api/upload/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'archived' }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to archive');
+      }
+      
+      await fetchVersions();
+    } catch (err) {
+      console.error('Error archiving version:', err);
+    }
   }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-500">{error}</p>
+        <button
+          onClick={fetchVersions}
+          className="mt-4 text-primary hover:underline"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (versions.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">No versions uploaded yet.</p>
+        <p className="text-sm text-muted-foreground mt-1">Upload your first APK to get started.</p>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -121,8 +144,8 @@ export default function VersionsTable() {
       </div>
 
       <div className="space-y-3" role="list" aria-label="Version history list">
-        {memoizedVersions.map((ver) => {
-          const status = memoizedStatusConfig[ver.status];
+        {versions.map((ver) => {
+          const status = STATUS_CONFIG[ver.status];
           const isExpanded = expandedId === ver.id;
 
           return (
@@ -131,7 +154,6 @@ export default function VersionsTable() {
               className="bg-card border border-border rounded-2xl overflow-hidden card-lift"
               role="listitem"
             >
-              {/* Row */}
               <div
                 className="flex flex-wrap items-center gap-4 p-5 cursor-pointer hover:bg-muted/50 transition-colors"
                 onClick={() => toggleExpand(ver.id)}
@@ -141,7 +163,6 @@ export default function VersionsTable() {
                 aria-expanded={isExpanded}
                 aria-label={`${ver.version} - ${status.label}. Click to ${isExpanded ? 'collapse' : 'expand'} release notes`}
               >
-                {/* Version + status */}
                 <div className="flex items-center gap-3 min-w-[120px]">
                   <span className="font-mono text-sm font-bold text-foreground">{ver.version}</span>
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${status.className}`}>
@@ -149,17 +170,15 @@ export default function VersionsTable() {
                   </span>
                 </div>
 
-                {/* Meta */}
                 <div className="flex flex-wrap gap-x-6 gap-y-1 flex-1 text-xs text-muted-foreground">
                   <span>{ver.size}</span>
                   <span>{ver.platform}</span>
-                  <span>{ver.publishedAt}</span>
+                  <span>{ver.publishedAt ? new Date(ver.publishedAt).toLocaleDateString() : 'Not published'}</span>
                   {ver.downloads > 0 && (
                     <span className="text-foreground font-medium">{ver.downloads.toLocaleString()} downloads</span>
                   )}
                 </div>
 
-                {/* Chevron */}
                 <div className={`text-muted-foreground transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} aria-hidden="true">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="m6 9 6 6 6-6"/>
@@ -167,16 +186,17 @@ export default function VersionsTable() {
                 </div>
               </div>
 
-              {/* Expanded release notes */}
               {isExpanded && (
                 <div className="px-5 pb-5 border-t border-border pt-4" role="region" aria-label={`${ver.version} details`}>
                   <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Release Notes</p>
-                  <p className="text-sm text-foreground leading-relaxed mb-4">{ver.releaseNotes}</p>
+                  <p className="text-sm text-foreground leading-relaxed mb-4">
+                    {ver.releaseNotes || 'No release notes provided.'}
+                  </p>
 
                   <div className="flex flex-wrap gap-2">
                     {ver.status === 'live' && (
                       <button
-                        onClick={() => handleCopyLink(ver.version)}
+                        onClick={() => handleCopyLink(ver.id)}
                         className="text-xs font-semibold px-4 py-2 bg-secondary border border-border rounded-xl text-foreground hover:bg-muted transition-colors"
                         aria-label={`Copy download link for ${ver.version}`}
                       >

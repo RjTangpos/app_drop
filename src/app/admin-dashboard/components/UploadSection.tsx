@@ -11,7 +11,6 @@ interface UploadFormData {
   status: 'live' | 'draft';
 }
 
-// ✅ Validation constants
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 const MAX_RELEASE_NOTES_LENGTH = 500;
 
@@ -20,6 +19,7 @@ export default function UploadSection() {
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -32,13 +32,11 @@ export default function UploadSection() {
     status: 'draft',
   });
 
-  // ✅ Memoized file size display
   const fileSizeDisplay = useMemo(() => {
     if (!selectedFile) return null;
     return (selectedFile.size / 1024 / 1024).toFixed(1);
   }, [selectedFile]);
 
-  // ✅ Validate file
   const validateFile = useCallback((file: File): string | null => {
     if (!file.name.endsWith('.apk') && !file.name.endsWith('.aab')) {
       return 'Please select an APK or AAB file.';
@@ -79,7 +77,6 @@ export default function UploadSection() {
     }
   }, [validateFile]);
 
-  // ✅ Real-time field validation
   const validateField = useCallback((field: keyof UploadFormData, value: string): string => {
     switch (field) {
       case 'versionName':
@@ -128,10 +125,29 @@ export default function UploadSection() {
     return Object.keys(errors).length === 0;
   }, [selectedFile, form, validateField]);
 
+  const resetForm = useCallback(() => {
+    setSuccess(false);
+    setSelectedFile(null);
+    setForm({
+      versionName: '',
+      versionCode: '',
+      platform: 'Android',
+      releaseNotes: '',
+      minAndroid: '8.0',
+      status: 'draft',
+    });
+    setFieldErrors({});
+    setUploadProgress(0);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(false);
+    setUploadProgress(0);
 
     if (!validateForm()) {
       return;
@@ -140,35 +156,60 @@ export default function UploadSection() {
     setUploading(true);
 
     try {
-      // Simulate upload
-      await new Promise((resolve, reject) => {
-        const shouldFail = Math.random() < 0.1;
-        setTimeout(() => {
-          if (shouldFail) {
-            reject(new Error('Network error: Failed to upload APK. Please try again.'));
-          } else {
-            resolve(true);
+      // ✅ Create FormData
+      const formData = new FormData();
+      formData.append('file', selectedFile!);
+      formData.append('versionName', form.versionName);
+      formData.append('versionCode', form.versionCode);
+      formData.append('releaseNotes', form.releaseNotes);
+      formData.append('minAndroid', form.minAndroid);
+      formData.append('status', form.status);
+
+      // ✅ Upload with progress using XMLHttpRequest
+      const response = await new Promise<Response>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        
+        // Track progress
+        xhr.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable) {
+            const progress = Math.round((event.loaded / event.total) * 100);
+            setUploadProgress(progress);
           }
-        }, 2000);
+        });
+
+        xhr.addEventListener('load', () => {
+          const response = new Response(xhr.response, {
+            status: xhr.status,
+            statusText: xhr.statusText,
+            headers: {
+              'Content-Type': xhr.getResponseHeader('Content-Type') || 'application/json',
+            },
+          });
+          resolve(response);
+        });
+
+        xhr.addEventListener('error', () => {
+          reject(new Error('Network error occurred'));
+        });
+
+        xhr.addEventListener('abort', () => {
+          reject(new Error('Upload was aborted'));
+        });
+
+        xhr.open('POST', '/api/upload');
+        xhr.send(formData);
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const result = await response.json();
+      
       setSuccess(true);
-      setTimeout(() => {
-        setSuccess(false);
-        setSelectedFile(null);
-        setForm({
-          versionName: '',
-          versionCode: '',
-          platform: 'Android',
-          releaseNotes: '',
-          minAndroid: '8.0',
-          status: 'draft',
-        });
-        setFieldErrors({});
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      }, 3000);
+      setTimeout(resetForm, 3000);
+      
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to upload APK. Please try again.';
       setError(errorMessage);
@@ -293,6 +334,22 @@ export default function UploadSection() {
           )}
         </div>
 
+        {/* Progress Bar */}
+        {uploading && (
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Uploading...</span>
+              <span>{uploadProgress}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+              <div 
+                className="bg-primary h-2.5 rounded-full transition-all duration-300 ease-in-out"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Form Fields */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -354,6 +411,8 @@ export default function UploadSection() {
               <option value="10.0">Android 10</option>
               <option value="11.0">Android 11</option>
               <option value="12.0">Android 12</option>
+              <option value="13.0">Android 13</option>
+              <option value="14.0">Android 14</option>
             </select>
           </div>
           <div>
@@ -407,7 +466,7 @@ export default function UploadSection() {
               <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
               </svg>
-              Uploading...
+              Uploading... {uploadProgress}%
             </>
           ) : (
             <>
