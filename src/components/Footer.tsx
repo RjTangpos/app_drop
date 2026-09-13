@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import Link from 'next/link';
 import AppLogo from '../components/ui/AppLogo';
+import DownloadButton from './ui/DownloadButton';
 
 // ✅ Footer links as constant outside component
 const FOOTER_LINKS = [
@@ -47,6 +48,11 @@ export default function Footer() {
 
           {/* Right side */}
           <div className="flex items-center gap-6">
+            {/* ✅ Download Button (compact) */}
+            <DownloadButton
+              className="hidden sm:flex btn-download px-4 py-1.5 text-primary-foreground text-xs font-semibold rounded-full items-center gap-1.5"
+            />
+
             {/* Social icons */}
             <div className="flex items-center gap-3">
               <a
@@ -68,6 +74,7 @@ export default function Footer() {
                 </svg>
               </a>
             </div>
+
             <p className="text-xs text-muted-foreground">© 2026 AppDrop</p>
             <a href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors" aria-label="Privacy Policy">
               Privacy

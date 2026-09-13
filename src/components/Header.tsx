@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import AppLogo from '../components/ui/AppLogo';
+import DownloadButton from './ui/DownloadButton';
 
 const navLinks = [
   { label: 'Features', href: '#features' },
@@ -24,14 +25,14 @@ export default function Header() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // ✅ Handle menu close on scroll - separate from menuOpen state
+  // ✅ Handle menu close on scroll
   useEffect(() => {
     if (!menuOpen) return;
 
     const closeMenu = () => setMenuOpen(false);
     window.addEventListener('scroll', closeMenu, { passive: true });
     return () => window.removeEventListener('scroll', closeMenu);
-  }, [menuOpen]); // ✅ menuOpen in deps is fine here - cleanup handles it
+  }, [menuOpen]);
 
   // ✅ Handle escape key to close menu
   useEffect(() => {
@@ -122,18 +123,11 @@ export default function Header() {
               </svg>
               Admin
             </Link>
-            <a
-              href="#download"
+
+            {/* ✅ Download Button — now functional */}
+            <DownloadButton
               className="btn-download px-5 py-2 text-primary-foreground text-sm font-semibold rounded-full flex items-center gap-2"
-              aria-label="Download AppDrop APK"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" x2="12" y1="15" y2="3"/>
-              </svg>
-              Download
-            </a>
+            />
 
             {/* Hamburger */}
             <button
@@ -150,6 +144,7 @@ export default function Header() {
           </div>
         </div>
       </header>
+
       {/* Mobile Menu Overlay */}
       {menuOpen && (
         <div
@@ -183,13 +178,12 @@ export default function Header() {
           >
             Admin Login
           </Link>
-          <a
-            href="#download"
-            onClick={closeMenu}
-            className="btn-download px-8 py-3 text-primary-foreground font-semibold rounded-full"
-          >
-            Download App
-          </a>
+
+          {/* ✅ Mobile download button — now functional */}
+          <DownloadButton
+            className="btn-download px-8 py-3 text-primary-foreground font-semibold rounded-full flex items-center gap-2"
+            onError={(err) => console.error(err)}
+          />
         </div>
       )}
     </>

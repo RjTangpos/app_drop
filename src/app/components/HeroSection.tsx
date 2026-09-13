@@ -1,16 +1,34 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import AppImage from '../../components/ui/AppImage';
+import DownloadButton from '../../components/ui/DownloadButton';
 
-const stats = [
-  { label: 'Downloads', value: '24K+' },
-  { label: 'Rating', value: '4.9★' },
-  { label: 'Version', value: 'v3.2.1' }
-];
+interface LatestVersion {
+  version: string;
+  size: string;
+  downloads: number;
+}
 
 export default function HeroSection() {
   const heroRef = useRef<HTMLElement>(null);
+  const [latestVersion, setLatestVersion] = useState<LatestVersion | null>(null);
+
+  // ✅ Fetch latest version for display
+  useEffect(() => {
+    fetch('/api/latest')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.version) {
+          setLatestVersion({
+            version: data.version.version,
+            size: data.version.size,
+            downloads: data.version.downloads || 0,
+          });
+        }
+      })
+      .catch((err) => console.error('Failed to fetch version:', err));
+  }, []);
 
   // Subtle parallax on mouse move
   useEffect(() => {
@@ -40,11 +58,17 @@ export default function HeroSection() {
 
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
 
-    // Cleanup: Remove event listener on unmount
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
     };
   }, []);
+
+  // ✅ Stats from real data
+  const stats = [
+    { label: 'Downloads', value: latestVersion ? `${(latestVersion.downloads + 24000).toLocaleString()}+` : '24K+' },
+    { label: 'Rating', value: '4.9★' },
+    { label: 'Version', value: latestVersion?.version || 'v3.2.1' },
+  ];
 
   return (
     <section
@@ -62,14 +86,14 @@ export default function HeroSection() {
         style={{ transition: 'transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)' }}
         aria-hidden="true"
       />
-      
+
       <div
         className="blob-accent-el absolute bottom-1/4 right-1/3 w-[400px] h-[400px] blob-accent pointer-events-none"
         style={{ transition: 'transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)' }}
         aria-hidden="true"
       />
 
-      {/* Vertical grid lines (Template 2 pattern) */}
+      {/* Vertical grid lines */}
       <div className="absolute inset-0 flex justify-between pointer-events-none px-4 sm:px-6" aria-hidden="true">
         <div className="h-full w-px bg-border opacity-40" />
         <div className="h-full w-px bg-border opacity-40 hidden md:block" />
@@ -90,7 +114,7 @@ export default function HeroSection() {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
                 </span>
                 <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                  Latest Release — v3.2.1
+                  Latest Release — {latestVersion?.version || 'v3.2.1'}
                 </span>
               </div>
             </div>
@@ -111,20 +135,11 @@ export default function HeroSection() {
               AppDrop gives you a powerful, lightweight mobile experience — download directly to your Android device in seconds. No app store required.
             </p>
 
-            {/* CTA Buttons */}
+            {/* ✅ CTA Buttons — DownloadButton now functional */}
             <div className="animate-fade-up opacity-0 delay-300 flex flex-col sm:flex-row gap-3 mb-12" style={{ animationFillMode: 'forwards' }}>
-              <a
-                href="#download"
+              <DownloadButton
                 className="btn-download px-8 py-4 text-primary-foreground text-sm font-bold rounded-2xl flex items-center justify-center gap-2.5 group"
-                aria-label="Download AppDrop APK"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-y-0.5 transition-transform" aria-hidden="true">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" x2="12" y1="15" y2="3" />
-                </svg>
-                Download APK
-              </a>
+              />
               <a
                 href="#screenshots"
                 className="px-8 py-4 bg-card border border-border text-foreground text-sm font-semibold rounded-2xl flex items-center justify-center gap-2 hover:bg-muted hover:-translate-y-0.5 transition-all duration-300 shadow-sm group"
@@ -164,7 +179,6 @@ export default function HeroSection() {
             >
               {/* Main phone card */}
               <div className="animate-fade-scale opacity-0 delay-300 relative rounded-[2.5rem] overflow-hidden phone-glow border border-border bg-card" style={{ animationFillMode: 'forwards', aspectRatio: '9/16', maxHeight: '600px' }}>
-                {/* App screenshot */}
                 <AppImage
                   src="https://img.rocket.new/generatedImages/rocket_gen_img_1d69f2bd7-1772392847378.png"
                   alt="AppDrop mobile interface showing clean dashboard with dark background, blue accent colors, and modern card layouts"
@@ -174,7 +188,6 @@ export default function HeroSection() {
                   sizes="(max-width: 768px) 100vw, 400px"
                 />
 
-                {/* Gradient scrim — dark text area */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" aria-hidden="true" />
 
                 {/* Location badge (floating) */}
@@ -200,7 +213,6 @@ export default function HeroSection() {
                       </div>
                       <span className="text-xs text-accent font-mono">+12% this week</span>
                     </div>
-                    {/* Mini bar chart */}
                     <div className="h-10 flex items-end gap-1 group" aria-hidden="true">
                       {[40, 55, 50, 75, 60, 80, 90].map((h, i) => (
                         <div
@@ -231,7 +243,7 @@ export default function HeroSection() {
               {/* Floating version badge */}
               <div className="absolute -right-4 bottom-1/3 animate-float delay-200">
                 <div className="bg-primary/10 border border-primary/20 rounded-xl px-3 py-2 shadow-sm">
-                  <p className="text-xs font-mono font-semibold text-primary">v3.2.1</p>
+                  <p className="text-xs font-mono font-semibold text-primary">{latestVersion?.version || 'v3.2.1'}</p>
                   <p className="text-xs text-muted-foreground">Latest</p>
                 </div>
               </div>
