@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { authOptions } from '../../../lib/auth';
 import { writeFile, mkdir, stat } from 'fs/promises';
 import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,7 +8,7 @@ import { createHash } from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-import { logger } from '@/lib/logger';
+import { logger } from '../../../lib/logger';
 
 // ✅ Configuration
 const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads/apks';
