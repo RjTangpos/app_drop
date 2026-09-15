@@ -14,7 +14,6 @@ export default function HeroSection() {
   const heroRef = useRef<HTMLElement>(null);
   const [latestVersion, setLatestVersion] = useState<LatestVersion | null>(null);
 
-  // ✅ Fetch latest version for display
   useEffect(() => {
     fetch('/api/latest')
       .then((res) => res.json())
@@ -30,7 +29,6 @@ export default function HeroSection() {
       .catch((err) => console.error('Failed to fetch version:', err));
   }, []);
 
-  // Subtle parallax on mouse move
   useEffect(() => {
     const hero = heroRef.current;
     if (!hero) return;
@@ -57,30 +55,30 @@ export default function HeroSection() {
     };
 
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-    };
+    return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  // ✅ Stats from real data
   const stats = [
-    { label: 'Downloads', value: latestVersion ? `${(latestVersion.downloads + 24000).toLocaleString()}+` : '24K+' },
-    { label: 'Rating', value: '4.9★' },
-    { label: 'Version', value: latestVersion?.version || 'v3.2.1' },
+    {
+      label: 'Downloads',
+      value: latestVersion
+        ? `${(latestVersion.downloads + 50000).toLocaleString()}+`
+        : '50K+',
+    },
+    { label: 'Sources', value: '200+' },
+    { label: 'Version', value: latestVersion?.version || 'v1.0.0' },
   ];
 
   return (
     <section
       ref={heroRef}
       className="relative min-h-screen flex items-center pt-16 overflow-hidden bg-background"
-      aria-label="Hero section - AppDrop mobile app"
+      aria-label="NEOReader — Manga & Manhwa reader for Android"
     >
       {/* Background layers */}
       <div className="absolute inset-0 grid-lines opacity-60 pointer-events-none" />
       <div className="absolute inset-0 hero-glow pointer-events-none" />
 
-      {/* Blob layers */}
       <div
         className="blob-primary-el absolute top-1/4 left-1/4 w-[500px] h-[500px] blob-primary pointer-events-none"
         style={{ transition: 'transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)' }}
@@ -93,7 +91,6 @@ export default function HeroSection() {
         aria-hidden="true"
       />
 
-      {/* Vertical grid lines */}
       <div className="absolute inset-0 flex justify-between pointer-events-none px-4 sm:px-6" aria-hidden="true">
         <div className="h-full w-px bg-border opacity-40" />
         <div className="h-full w-px bg-border opacity-40 hidden md:block" />
@@ -103,7 +100,6 @@ export default function HeroSection() {
 
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 w-full py-16 lg:py-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-
           {/* Left: Content */}
           <div className="lg:col-span-6 flex flex-col">
             {/* Badge */}
@@ -114,17 +110,18 @@ export default function HeroSection() {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
                 </span>
                 <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                  Latest Release — {latestVersion?.version || 'v3.2.1'}
+                  Latest Release — {latestVersion?.version || 'v1.0.0'}
                 </span>
               </div>
             </div>
 
             {/* Headline */}
-            <h1 className="animate-fade-up opacity-0 delay-100 text-hero font-bold text-foreground mb-6" style={{ animationFillMode: 'forwards' }}>
-              The app that
-              <span className="block text-gradient">
-                fits in your pocket.
-              </span>
+            <h1
+              className="animate-fade-up opacity-0 delay-100 text-hero font-bold text-foreground mb-6"
+              style={{ animationFillMode: 'forwards' }}
+            >
+              Your entire manga library,
+              <span className="block text-gradient">in one app.</span>
             </h1>
 
             {/* Subheadline */}
@@ -132,21 +129,37 @@ export default function HeroSection() {
               className="animate-fade-up opacity-0 delay-200 text-base sm:text-lg text-muted-foreground max-w-lg mb-10 leading-relaxed border-l-2 border-primary/30 pl-5 hover:border-primary transition-colors duration-500"
               style={{ animationFillMode: 'forwards' }}
             >
-              AppDrop gives you a powerful, lightweight mobile experience — download directly to your Android device in seconds. No app store required.
+              <strong className="text-foreground font-semibold">NEOReader</strong> is a
+              lightning-fast Manga, Manhwa & Manhua reader for Android. Ad-free,
+              offline-ready, and packed with 200+ sources. Download the APK directly —
+              no app store required.
             </p>
 
-            {/* ✅ CTA Buttons — DownloadButton now functional */}
-            <div className="animate-fade-up opacity-0 delay-300 flex flex-col sm:flex-row gap-3 mb-12" style={{ animationFillMode: 'forwards' }}>
-              <DownloadButton
-                className="btn-download px-8 py-4 text-primary-foreground text-sm font-bold rounded-2xl flex items-center justify-center gap-2.5 group"
-              />
+            {/* CTA Buttons */}
+            <div
+              className="animate-fade-up opacity-0 delay-300 flex flex-col sm:flex-row gap-3 mb-12"
+              style={{ animationFillMode: 'forwards' }}
+            >
+              <DownloadButton className="btn-download px-8 py-4 text-primary-foreground text-sm font-bold rounded-2xl flex items-center justify-center gap-2.5 group" />
               <a
-                href="#screenshots"
+                href="#features"
                 className="px-8 py-4 bg-card border border-border text-foreground text-sm font-semibold rounded-2xl flex items-center justify-center gap-2 hover:bg-muted hover:-translate-y-0.5 transition-all duration-300 shadow-sm group"
-                aria-label="View screenshots"
+                aria-label="See NEOReader features"
               >
-                See Screenshots
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-x-0.5 transition-transform" aria-hidden="true">
+                See Features
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="group-hover:translate-x-0.5 transition-transform"
+                  aria-hidden="true"
+                >
                   <path d="M5 12h14" />
                   <path d="m12 5 7 7-7 7" />
                 </svg>
@@ -154,7 +167,10 @@ export default function HeroSection() {
             </div>
 
             {/* Stats */}
-            <div className="animate-fade-up opacity-0 delay-400 flex flex-wrap gap-2 items-center" style={{ animationFillMode: 'forwards' }}>
+            <div
+              className="animate-fade-up opacity-0 delay-400 flex flex-wrap gap-2 items-center"
+              style={{ animationFillMode: 'forwards' }}
+            >
               {stats.map((stat, i) => (
                 <React.Fragment key={stat.label}>
                   <div className="flex flex-col group cursor-default hover:-translate-y-0.5 transition-transform duration-300">
@@ -171,57 +187,82 @@ export default function HeroSection() {
             </div>
           </div>
 
-          {/* Right: Phone Mockup Card */}
+          {/* Right: Phone Mockup */}
           <div className="lg:col-span-6 flex items-center justify-center">
             <div
               className="phone-card relative w-full max-w-sm mx-auto"
               style={{ transition: 'transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)' }}
             >
-              {/* Main phone card */}
-              <div className="animate-fade-scale opacity-0 delay-300 relative rounded-[2.5rem] overflow-hidden phone-glow border border-border bg-card" style={{ animationFillMode: 'forwards', aspectRatio: '9/16', maxHeight: '600px' }}>
+              <div
+                className="animate-fade-scale opacity-0 delay-300 relative rounded-[2.5rem] overflow-hidden phone-glow border border-border bg-card"
+                style={{ animationFillMode: 'forwards', aspectRatio: '9/16', maxHeight: '600px' }}
+              >
+                {/* ✅ Replace with NEOReader app screenshot */}
                 <AppImage
                   src="https://img.rocket.new/generatedImages/rocket_gen_img_1d69f2bd7-1772392847378.png"
-                  alt="AppDrop mobile interface showing clean dashboard with dark background, blue accent colors, and modern card layouts"
+                  alt="NEOReader Android app showing manga library with cover thumbnails, dark theme, and reading progress"
                   fill
                   className="object-cover"
                   priority
                   sizes="(max-width: 768px) 100vw, 400px"
                 />
 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" aria-hidden="true" />
+                <div
+                  className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"
+                  aria-hidden="true"
+                />
 
-                {/* Location badge (floating) */}
+                {/* Badge */}
                 <div className="absolute top-6 right-6">
                   <div className="animate-float flex items-center gap-2 bg-black/40 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/15 shadow-lg">
-                    <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-glow" aria-hidden="true" />
-                    <span className="text-xs font-semibold text-white uppercase tracking-wide">Android APK</span>
+                    <div
+                      className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-glow"
+                      aria-hidden="true"
+                    />
+                    <span className="text-xs font-semibold text-white uppercase tracking-wide">
+                      Android APK
+                    </span>
                   </div>
                 </div>
 
-                {/* Bottom card: mini stats widget */}
+                {/* Bottom stats widget */}
                 <div className="absolute bottom-6 left-4 right-4">
                   <div className="animate-float-delayed bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 shadow-2xl">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-lg" aria-hidden="true">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <div
+                          className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-lg"
+                          aria-hidden="true"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="white"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
                             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                             <polyline points="22 4 12 14.01 9 11.01" />
                           </svg>
                         </div>
-                        <span className="text-xs text-white font-semibold">Download Stats</span>
+                        <span className="text-xs text-white font-semibold">
+                          Reading Activity
+                        </span>
                       </div>
-                      <span className="text-xs text-accent font-mono">+12% this week</span>
+                      <span className="text-xs text-accent font-mono">+24% this week</span>
                     </div>
-                    <div className="h-10 flex items-end gap-1 group" aria-hidden="true">
+                    <div className="h-10 flex items-end gap-1" aria-hidden="true">
                       {[40, 55, 50, 75, 60, 80, 90].map((h, i) => (
                         <div
                           key={i}
-                          className={`flex-1 rounded-t-sm transition-all duration-700 ${i === 6 ? 'bg-accent' : 'bg-white/25'}`}
-                          style={{
-                            height: `${h}%`,
-                            transitionDelay: `${i * 80}ms`
-                          }}
+                          className={`flex-1 rounded-t-sm transition-all duration-700 ${
+                            i === 6 ? 'bg-accent' : 'bg-white/25'
+                          }`}
+                          style={{ height: `${h}%`, transitionDelay: `${i * 80}ms` }}
                         />
                       ))}
                     </div>
@@ -229,21 +270,25 @@ export default function HeroSection() {
                 </div>
               </div>
 
-              {/* Floating review badge */}
+              {/* Floating rating badge */}
               <div className="absolute -left-6 top-1/3 animate-float delay-500">
                 <div className="bg-card border border-border rounded-2xl px-4 py-3 shadow-card-hover">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-yellow-400 text-sm" aria-hidden="true">★★★★★</span>
+                    <span className="text-yellow-400 text-sm" aria-hidden="true">
+                      ★★★★★
+                    </span>
                   </div>
                   <p className="text-xs font-semibold text-foreground">Rated 4.9/5</p>
-                  <p className="text-xs text-muted-foreground">2,400+ reviews</p>
+                  <p className="text-xs text-muted-foreground">12,000+ readers</p>
                 </div>
               </div>
 
               {/* Floating version badge */}
               <div className="absolute -right-4 bottom-1/3 animate-float delay-200">
                 <div className="bg-primary/10 border border-primary/20 rounded-xl px-3 py-2 shadow-sm">
-                  <p className="text-xs font-mono font-semibold text-primary">{latestVersion?.version || 'v3.2.1'}</p>
+                  <p className="text-xs font-mono font-semibold text-primary">
+                    {latestVersion?.version || 'v1.0.0'}
+                  </p>
                   <p className="text-xs text-muted-foreground">Latest</p>
                 </div>
               </div>
