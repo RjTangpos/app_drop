@@ -3,26 +3,41 @@ import Link from 'next/link';
 import AppLogo from '../components/ui/AppLogo';
 import DownloadButton from './ui/DownloadButton';
 
+// ✅ Top-level nav links
 const FOOTER_LINKS = [
   { label: 'Features', href: '#features', isInternal: false },
   { label: 'Screenshots', href: '#screenshots', isInternal: false },
-  { label: 'Sources', href: '#sources', isInternal: false },
   { label: 'Install', href: '#install', isInternal: false },
+  { label: 'Changelog', href: '/changelog', isInternal: true },
+  { label: 'Versions', href: '/versions', isInternal: true },
   { label: 'Admin', href: '/admin-login', isInternal: true },
+];
+
+// ✅ Legal links (bottom right)
+const LEGAL_LINKS = [
+  { label: 'Privacy', href: '/privacy' },
+  { label: 'Terms', href: '/terms' },
 ];
 
 export default function Footer() {
   const memoizedLinks = useMemo(() => FOOTER_LINKS, []);
+  const memoizedLegal = useMemo(() => LEGAL_LINKS, []);
 
   return (
     <footer className="border-t border-border bg-background">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          {/* Logo + Links */}
-          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-8 gap-y-2">
-            <Link href="/" className="flex items-center gap-2" aria-label="NEOReader home">
+          {/* Logo + Nav Links */}
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-6 gap-y-2">
+            <Link
+              href="/"
+              className="flex items-center gap-2"
+              aria-label="NEOReader home"
+            >
               <AppLogo size={28} />
-              <span className="font-semibold text-sm text-foreground">NEOReader</span>
+              <span className="font-semibold text-sm text-foreground">
+                NEOReader
+              </span>
             </Link>
             {memoizedLinks.map((link) =>
               link.isInternal ? (
@@ -46,7 +61,7 @@ export default function Footer() {
           </div>
 
           {/* Right side */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-5">
             <DownloadButton className="hidden sm:flex btn-download px-4 py-1.5 text-primary-foreground text-xs font-semibold rounded-full items-center gap-1.5" />
 
             <div className="flex items-center gap-3">
@@ -85,20 +100,16 @@ export default function Footer() {
             </div>
 
             <p className="text-xs text-muted-foreground">© 2026 NEOReader</p>
-            <a
-              href="#"
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Privacy Policy"
-            >
-              Privacy
-            </a>
-            <a
-              href="#"
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Terms of Service"
-            >
-              Terms
-            </a>
+
+            {memoizedLegal.map((link) => (
+              <Link
+                key={link.label}
+                href={link.href}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {link.label}
+              </Link>
+            ))}
           </div>
         </div>
       </div>

@@ -5,11 +5,17 @@ import Link from 'next/link';
 import AppLogo from '../components/ui/AppLogo';
 import DownloadButton from './ui/DownloadButton';
 
-const navLinks = [
+interface NavLink {
+  label: string;
+  href: string;
+  isRoute?: boolean;
+}
+
+const navLinks: NavLink[] = [
   { label: 'Features', href: '#features' },
   { label: 'Screenshots', href: '#screenshots' },
-  { label: 'Sources', href: '#sources' },
   { label: 'Install', href: '#install' },
+  { label: 'Changelog', href: '/changelog', isRoute: true },
 ];
 
 export default function Header() {
@@ -76,22 +82,26 @@ export default function Header() {
             className="hidden md:flex items-center gap-1 px-5 py-2 bg-card/70 backdrop-blur-sm border border-border rounded-full shadow-sm"
             aria-label="Main navigation"
           >
-            {navLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                className="px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors duration-200 rounded-full hover:bg-muted"
-              >
-                {link.label}
-              </a>
-            ))}
-            <Link
-              href="/versions"
-              className="px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors duration-200 rounded-full hover:bg-muted"
-            >
-              Versions
-            </Link>
-          </nav>
+            {navLinks.map((link) =>
+              link.isRoute ? (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className="px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors duration-200 rounded-full hover:bg-muted"
+                >
+                  {link.label}
+                </Link>
+              ) : (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  className="px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors duration-200 rounded-full hover:bg-muted"
+                >
+                  {link.label}
+                </a>
+              )
+            )}
+          </nav>   {/* ✅ Bug 1 fix: closing tag added */}
 
           {/* Right Side */}
           <div className="flex items-center gap-3">
@@ -157,16 +167,29 @@ export default function Header() {
           aria-modal="true"
           aria-label="Mobile navigation menu"
         >
-          {navLinks.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              onClick={closeMenu}
-              className="text-2xl font-semibold text-foreground hover:text-primary transition-colors"
-            >
-              {link.label}
-            </a>
-          ))}
+          {/* ✅ Bug 2 fix: route-aware rendering */}
+          {navLinks.map((link) =>
+            link.isRoute ? (
+              <Link
+                key={link.label}
+                href={link.href}
+                onClick={closeMenu}
+                className="text-2xl font-semibold text-foreground hover:text-primary transition-colors"
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                key={link.label}
+                href={link.href}
+                onClick={closeMenu}
+                className="text-2xl font-semibold text-foreground hover:text-primary transition-colors"
+              >
+                {link.label}
+              </a>
+            )
+          )}
+
           <Link
             href="/versions"
             onClick={closeMenu}
